@@ -179,6 +179,9 @@ label.lbl{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);marg
 .line-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .line-h .n{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .line-h .rm{margin-left:auto}
+.decl{background:var(--blue-soft);border:1px solid #c5e4f3;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:var(--ink-2)}
+.decl p{margin:0}
+.decl .decl-who{margin-top:8px;font-weight:600;color:var(--navy)}
 .emp-box{border:1px solid var(--line);border-radius:12px;padding:12px 14px 4px;background:#f9fbfd}
 .eline{display:grid;grid-template-columns:30px minmax(0,1fr) 170px auto;gap:8px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:10px 10px 4px 12px;background:#fff}
 .eline.rec{grid-template-columns:30px minmax(0,1fr) 120px 285px auto}
@@ -367,7 +370,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
 
   <!-- ============ REGISTRO ============ -->
   <section class="page" id="page-registro">
-    <div class="page-head"><div><h2>Registro de EPP</h2><p>Movimientos de inventario a empleado (entrega) o de empleado a inventario (recepción).</p></div></div>
+    <div class="page-head"><div><h2>Registro de EPP</h2><p>Movimientos de inventario a empleado (entrega) o de empleado a inventario (devolución).</p></div></div>
     <div class="reg">
       <div class="card sec">
         <h3><span class="num">1</span>Datos generales</h3>
@@ -380,9 +383,9 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
                 <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h13M12 6l6 6-6 6"/><path d="M21 4v16"/></svg></span>
                 <span><b>Entrega de EPP</b><small>Inventario → empleado</small></span>
               </button>
-              <button type="button" class="mov rec" data-mov="Recepción">
+              <button type="button" class="mov rec" data-mov="Devolución">
                 <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12H7M12 6l-6 6 6 6"/><path d="M3 4v16"/></svg></span>
-                <span><b>Recepción de EPP</b><small>Empleado → inventario</small></span>
+                <span><b>Devolución de EPP</b><small>Empleado → inventario</small></span>
               </button>
             </div>
           </div>
@@ -431,12 +434,23 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
           <div class="add-row"><button type="button" class="btn" id="btnAddLine">+ Agregar EPP</button></div>
         </div>
 
-        <!-- Recepción: firma de quien entrega -->
+        <!-- Devolución: firma de quien entrega -->
         <div class="card sec only-rec">
           <h3><span class="num">3</span>Persona que entrega el EPP</h3>
           <p class="sub-lbl" id="firmaEntNombre" style="font-weight:500"></p>
           <label class="lbl">Firma <span class="hint">(espacio para firmar)</span></label>
           <div class="sig-wrap" id="sigEntrega"></div>
+        </div>
+
+        <!-- Entrega: capacitación -->
+        <div class="card sec only-ent">
+          <h3><span class="num">5</span>Capacitación de EPP</h3>
+          <div class="decl">
+            <p id="capTexto">Declaro que recibí capacitación sobre el uso, ajuste, cuidado, mantenimiento, limitaciones y reposición del EPP entregado, y me comprometo a utilizarlo correctamente durante mis labores.</p>
+            <p class="decl-who" id="capNombre"></p>
+          </div>
+          <label class="lbl">Firma de la persona que recibe el EPP <span class="hint">(constancia de capacitación)</span></label>
+          <div class="sig-wrap" id="sigCap"></div>
         </div>
 
         <!-- Responsable -->
@@ -464,7 +478,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
   <!-- ============ HISTORIAL ============ -->
   <section class="page" id="page-historial">
     <div class="page-head">
-      <div><h2>Historial</h2><p>Trazabilidad de todas las entregas y recepciones de EPP.</p></div>
+      <div><h2>Historial</h2><p>Trazabilidad de todas las entregas y devoluciones de EPP.</p></div>
       <div class="actions"><button class="btn" id="btnCsv">Exportar CSV</button></div>
     </div>
     <p class="sect-t">Movimientos recientes</p>
@@ -475,7 +489,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
       <div><label class="lbl" for="fHasta">Hasta</label><input type="date" class="input" id="fHasta"></div>
       <div><label class="lbl" for="fArea">Área</label><select class="input" id="fArea"><option value="">Todas</option></select></div>
       <div><label class="lbl" for="fEmp">Empleado</label><select class="input" id="fEmp"><option value="">Todos</option></select></div>
-      <div><label class="lbl" for="fTipo">Movimiento</label><select class="input" id="fTipo"><option value="">Todos</option><option>Entrega</option><option>Recepción</option></select></div>
+      <div><label class="lbl" for="fTipo">Movimiento</label><select class="input" id="fTipo"><option value="">Todos</option><option>Entrega</option><option>Devolución</option></select></div>
       <div><label class="lbl" for="fEpp">EPP</label><select class="input" id="fEpp"><option value="">Todos</option></select></div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -533,7 +547,7 @@ const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch(e
 const lsSet = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } };
 
 /* ---------------- Backend local (modo demostración) ---------------- */
-const LOCAL_KEY = 'xochi_epp_demo_v3';
+const LOCAL_KEY = 'xochi_epp_demo_v4';
 const Local = {
   db: null,
   load(){
@@ -554,7 +568,7 @@ const Local = {
     for (const k in tot){
       const c = cat[k];
       if (esEnt && tot[k] > c.inventario) throw new Error(`Inventario insuficiente de "${c.descripcion}": disponible ${c.inventario}, solicitado ${tot[k]}.`);
-      if (!esEnt && tot[k] > c.enUso) throw new Error(`"${c.descripcion}" solo tiene ${c.enUso} en uso; no se pueden recibir ${tot[k]}.`);
+      if (!esEnt && tot[k] > c.enUso) throw new Error(`"${c.descripcion}" solo tiene ${c.enUso} en uso; no se pueden devolver ${tot[k]}.`);
     }
     p.lineas.forEach(l => { const c = cat[l.epp];
       if (esEnt){ c.inventario -= l.cantidad; c.enUso += l.cantidad; }
@@ -567,7 +581,8 @@ const Local = {
       entregadoPor: esEnt ? '' : p.entrega.nombre, areaEntrega: esEnt ? '' : p.entrega.area,
       firmaEntrega: esEnt ? '' : (p.entrega.firma ? '(firma capturada)' : ''),
       responsable: p.responsable.nombre, cargo: p.responsable.cargo, observaciones: p.observaciones,
-      firmaResponsable: p.responsable.firma ? '(firma capturada)' : '', lineas: p.lineas.length });
+      firmaResponsable: p.responsable.firma ? '(firma capturada)' : '', lineas: p.lineas.length,
+      firmaCapacitacion: esEnt && p.capacitacion && p.capacitacion.firma ? '(firma capturada)' : '' });
     const mot = esEnt ? [p.motivo, p.motivoDetalle].filter(Boolean).join(': ') : '';
     p.lineas.forEach((l,i) => d.movimientos.push({ id: id+'-'+(i+1), registro:id, creado, tipo:p.tipo, fecha:l.fecha||p.fecha,
       empleado:l.empleado, nombre:l.nombre, area:l.area, epp:l.epp, eppNombre:cat[l.epp].descripcion,
@@ -620,7 +635,8 @@ let S = { personal:[], catalogo:[], movimientos:[], registros:[] };
 let perById = {}, catById = {};
 function setData(d){
   S = { personal: d.personal || [], catalogo: (d.catalogo || []).map(c => ({...c, inventario:num(c.inventario), enUso:num(c.enUso), minimo:num(c.minimo)})),
-        movimientos: (d.movimientos || []).map(m => ({...m, cantidad:num(m.cantidad)})), registros: d.registros || [] };
+        movimientos: (d.movimientos || []).map(m => ({...m, tipo: m.tipo === 'Recep' + 'ción' ? 'Devolución' : m.tipo, cantidad:num(m.cantidad)})),
+        registros: (d.registros || []).map(r => ({...r, tipo: r.tipo === 'Recep' + 'ción' ? 'Devolución' : r.tipo})) };
   perById = Object.fromEntries(S.personal.map(p => [p.nombre, p])); // la persona se identifica por su nombre
   catById = Object.fromEntries(S.catalogo.map(c => [c.codigo, c]));
   $('#nPer').textContent = S.personal.length; $('#nCat').textContent = S.catalogo.length; $('#nMov').textContent = S.movimientos.length;
@@ -631,7 +647,7 @@ function areasUsed(){ return [...new Set([...S.personal.map(p => p.area), ...S.m
 function sortedPersonal(){ return [...S.personal].sort((a,b) => a.nombre.localeCompare(b.nombre,'es')); }
 function sortedCatalogo(){ return [...S.catalogo].sort((a,b) => a.descripcion.localeCompare(b.descripcion,'es')); }
 
-/** EPP neto asignado por empleado: entregas − recepciones */
+/** EPP neto asignado por empleado: entregas − devoluciones */
 function asignaciones(nombreEmp){
   const m = {};
   S.movimientos.filter(x => x.nombre === nombreEmp).forEach(x => {
@@ -703,7 +719,7 @@ function personBody(p, asg){
     <div><h4>EPP asignado</h4><div class="assign">${items}</div>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn sm" data-go="Entrega">Registrar entrega</button>
-        ${asg.length?'<button class="btn sm" data-go="Recepción">Registrar recepción</button>':''}
+        ${asg.length?'<button class="btn sm" data-go="Devolución">Registrar devolución</button>':''}
         <button class="btn sm ghost" data-hist>Ver historial</button></div></div>
     <div><h4>Datos del empleado</h4>
       <div class="form-grid">
@@ -898,8 +914,9 @@ class SigPad {
     const w = 500, h = Math.round(500 * this.c.height / this.c.width); const t = document.createElement('canvas'); t.width = w; t.height = h;
     const tc = t.getContext('2d'); tc.fillStyle = '#fff'; tc.fillRect(0,0,w,h); tc.drawImage(this.c,0,0,w,h); return t.toDataURL('image/png'); }
 }
-const sigResp = new SigPad($('#sigResp')), sigEnt = new SigPad($('#sigEntrega'));
-const sigs = [sigResp, sigEnt];
+const sigResp = new SigPad($('#sigResp')), sigEnt = new SigPad($('#sigEntrega')), sigCap = new SigPad($('#sigCap'));
+const sigs = [sigResp, sigEnt, sigCap];
+const CAP_TEXTO = 'Declaro que recibí capacitación sobre el uso, ajuste, cuidado, mantenimiento, limitaciones y reposición del EPP entregado, y me comprometo a utilizarlo correctamente durante mis labores.';
 window.addEventListener('resize', () => sigs.forEach(s => s.resize()));
 
 /* ---------------- Registro (una persona por registro) ---------------- */
@@ -917,11 +934,11 @@ function setMov(t){
   const ent = t === 'Entrega';
   $$('.only-ent').forEach(x => x.style.display = ent ? '' : 'none');
   $$('.only-rec').forEach(x => x.style.display = ent ? 'none' : '');
-  $('#tLista').textContent = ent ? 'Lista de entrega de EPP' : 'Lista de recepción de EPP';
-  $('#lFechaMov').textContent = ent ? 'Fecha de entrega' : 'Fecha de recepción';
+  $('#tLista').textContent = ent ? 'Lista de entrega de EPP' : 'Lista de devolución de EPP';
+  $('#lFechaMov').textContent = ent ? 'Fecha de entrega' : 'Fecha de devolución';
   $('#rFechaMov').setAttribute('aria-label', $('#lFechaMov').textContent);
-  $('#hEppSub').textContent = ent ? '(a entregar)' : '(a recibir)';
-  $('#numLista').textContent = ent ? '4' : '2'; $('#numResp').textContent = ent ? '5' : '4';
+  $('#hEppSub').textContent = ent ? '(a entregar)' : '(a devolver)';
+  $('#numLista').textContent = ent ? '4' : '2'; $('#numResp').textContent = ent ? '6' : '4';
   if (changed){ $('#lines').innerHTML = ''; addLine(); }
   updateFirmaNombre(); $('#regErr').classList.remove('show');
   setTimeout(() => sigs.forEach(s => s.resize()), 30);
@@ -942,7 +959,7 @@ function personOptions(sel){
 }
 function eppOptions(sel, emp){
   let list = sortedCatalogo();
-  if (movTipo === 'Recepción' && emp){
+  if (movTipo === 'Devolución' && emp){
     const asg = asignaciones(emp).map(a => a.epp);
     const a = list.filter(c => asg.includes(c.codigo)), b = list.filter(c => !asg.includes(c.codigo));
     return '<option value="">Nombre de EPP</option>' +
@@ -959,7 +976,7 @@ function addLine(){
   el.innerHTML = `<span class="n"></span>
     <div class="w-epp"><select class="input empty" data-f="epp" aria-label="Nombre de EPP">${eppOptions('', empSel())}</select><div class="fhint" data-h="epp"></div></div>
     <div class="w-qty"><input type="number" min="1" step="1" class="input" data-f="qty" placeholder="Cantidad de EPP" aria-label="Cantidad de EPP"><div class="fhint" data-h="qty"></div></div>
-    ${ent ? '' : `<div class="w-cond"><select class="input" data-f="cond" aria-label="Condición"><option value="Reingreso">Buen estado — vuelve a inventario</option><option value="Baja">Dañado — se da de baja</option></select><div class="fhint hint">Condición del EPP recibido</div></div>`}
+    ${ent ? '' : `<div class="w-cond"><select class="input" data-f="cond" aria-label="Condición"><option value="Reingreso">Buen estado — vuelve a inventario</option><option value="Baja">Dañado — se da de baja</option></select><div class="fhint hint">Condición del EPP devuelto</div></div>`}
     <button type="button" class="btn ghost sm rm danger" title="Quitar EPP">Quitar</button>`;
   $('#lines').appendChild(el);
   renumber(); validateLines(); return el;
@@ -971,7 +988,8 @@ function setEmpleado(nombre){
   $$('#lines [data-f=epp]').forEach(s => { s.innerHTML = eppOptions(s.value, sel.value); });
   updateFirmaNombre(); validateLines();
 }
-function updateFirmaNombre(){ $('#firmaEntNombre').textContent = empSel() ? empSel() + (($('#rArea').value) ? ' · ' + $('#rArea').value : '') : 'Selecciona a la persona en la lista de recepción.'; }
+function updateFirmaNombre(){ const t = empSel() ? empSel() + (($('#rArea').value) ? ' · ' + $('#rArea').value : '') : 'Selecciona a la persona en la lista de devolución.';
+  $('#firmaEntNombre').textContent = t; $('#capNombre').textContent = empSel() ? t : 'Selecciona a la persona en la lista de entrega.'; }
 function refreshLineOptions(){
   const ev = $('#rEmp').value; $('#rEmp').innerHTML = personOptions(ev); if ($('#rEmp').value !== ev) $('#rEmp').value = '';
   $('#rEmp').classList.toggle('empty', !$('#rEmp').value);
@@ -1035,8 +1053,9 @@ $('#btnSaveReg').onclick = async () => {
     if (motivo === 'Otro'){ motivoDet = $('#rMotivoOtro').value.trim(); if (!motivoDet){ errs.push('Escribe el motivo de entrega.'); $('#rMotivoOtro').classList.add('err'); } }
   }
   if (!empSel()){ errs.push('Selecciona a la persona (Nombres y apellidos).'); $('#rEmp').classList.add('err'); }
-  if (!$('#rFechaMov').value){ errs.push(`Indica la ${ent ? 'fecha de entrega' : 'fecha de recepción'}.`); $('#rFechaMov').classList.add('err'); }
+  if (!$('#rFechaMov').value){ errs.push(`Indica la ${ent ? 'fecha de entrega' : 'fecha de devolución'}.`); $('#rFechaMov').classList.add('err'); }
   if (!ent && sigEnt.empty) errs.push('Falta la firma de la persona que entrega el EPP.');
+  if (ent && sigCap.empty) errs.push('Falta la firma de la persona que recibe el EPP en «Capacitación de EPP».');
   const ls = readLines();
   ls.forEach((l,i) => {
     const mark = f => l.el.querySelector(`[data-f=${f}]`).classList.add('err');
@@ -1051,6 +1070,7 @@ $('#btnSaveReg').onclick = async () => {
 
   const payload = { tipo:movTipo, fecha, tipoEquipo, tipoEquipoDetalle:tipoDet, motivo, motivoDetalle:motivoDet,
     entrega: ent ? null : { nombre:empSel(), area:$('#rArea').value.trim(), firma:sigEnt.data() },
+    capacitacion: ent ? { texto:CAP_TEXTO, nombre:empSel(), firma:sigCap.data() } : null,
     responsable: { nombre:$('#rsNombre').value.trim(), cargo:$('#rsCargo').value.trim(), firma:sigResp.data() },
     observaciones: $('#rsObs').value.trim(),
     lineas: ls.map(l => ({ empleado:l.codigo, nombre:l.nombre, area:l.area, fecha:l.fecha, epp:l.epp, cantidad:l.cantidad, condicion: ent ? '' : l.condicion })) };
@@ -1075,7 +1095,7 @@ function resetRegistro(){
   $$('#optTipo .opt, #optMotivo .opt').forEach(o => o.classList.remove('on')); $$('.opt-extra').forEach(x => { x.classList.remove('show'); x.querySelector('input').value = ''; });
   ['#rArea','#rsObs'].forEach(s => $(s).value = ''); setEmpleado('');
   $('#rFecha').value = today(); $('#rFechaMov').value = today(); delete $('#rFechaMov').dataset.touched;
-  $('#lines').innerHTML = ''; sigs.forEach(s => s.clear()); $('#regErr').classList.remove('show'); $('#regSummary').textContent = '';
+  $('#lines').innerHTML = ''; sigs.forEach(s => s.clear()); $('#regErr').classList.remove('show'); $('#regSummary').textContent = ''; updateFirmaNombre();
 }
 $('#btnResetReg').onclick = () => { if (window.confirm('¿Limpiar todo el formulario?')) resetRegistro(); };
 function startRegistroFor(p, tipo){
@@ -1103,7 +1123,7 @@ function renderHistorial(){
       <div class="hint" style="font-style:normal">Responsable: ${esc(r.responsable)}</div></div>`; }).join('')
     : '<div class="empty-state" style="grid-column:1/-1">Aún no hay movimientos. Los registros guardados aparecerán aquí.</div>';
   const list = filtered();
-  $('#histCount').textContent = `${list.length} movimiento${list.length===1?'':'s'}` + (list.length ? ` · ${list.filter(m=>m.tipo==='Entrega').reduce((s,m)=>s+m.cantidad,0)} unidades entregadas · ${list.filter(m=>m.tipo!=='Entrega').reduce((s,m)=>s+m.cantidad,0)} recibidas` : '');
+  $('#histCount').textContent = `${list.length} movimiento${list.length===1?'':'s'}` + (list.length ? ` · entregadas: ${list.filter(m=>m.tipo==='Entrega').reduce((s,m)=>s+m.cantidad,0)} u. · devueltas: ${list.filter(m=>m.tipo!=='Entrega').reduce((s,m)=>s+m.cantidad,0)} u.` : '');
   $('#histBody').innerHTML = list.length ? list.map(m => `<tr>
     <td>${esc(fmtDate(m.fecha))}</td><td><span class="chip ${m.tipo==='Entrega'?'blue':'green'}">${esc(m.tipo)}</span></td>
     <td>${esc(m.nombre)}${m.empleado?`<div class="hint" style="font-style:normal"><span class="mono">${esc(m.empleado)}</span></div>`:''}</td><td>${esc(m.area)}</td>
@@ -1123,6 +1143,7 @@ function showRegistro(id){
       ${ent ? `<dt>Tipo de equipo</dt><dd>${esc([r.tipoEquipo, r.tipoEquipoDetalle].filter(Boolean).join(': '))}</dd><dt>Motivo</dt><dd>${esc([r.motivo, r.motivoDetalle].filter(Boolean).join(': '))}</dd>`
             : `<dt>Entregado por</dt><dd>${esc(r.entregadoPor)}${r.areaEntrega?' · '+esc(r.areaEntrega):''}</dd><dt>Firma de quien entrega</dt><dd>${firma(r.firmaEntrega)}</dd>`}
       <dt>Responsable</dt><dd>${esc(r.responsable)}${r.cargo?' · '+esc(r.cargo):''}</dd>
+      ${ent ? `<dt>Capacitación de EPP</dt><dd>Firma del empleado: ${firma(r.firmaCapacitacion)}</dd>` : ''}
       <dt>Firma responsable</dt><dd>${firma(r.firmaResponsable)}</dd>
       ${r.observaciones ? `<dt>Observaciones</dt><dd>${esc(r.observaciones)}</dd>` : ''}
     </dl>
@@ -1132,6 +1153,7 @@ function showRegistro(id){
   $('#dPrint').onclick = () => printConstancia({ id:r.id, creado:r.creado, tipo:r.tipo, fecha:r.fecha, tipoEquipo:r.tipoEquipo, tipoEquipoDetalle:r.tipoEquipoDetalle,
     motivo:r.motivo, motivoDetalle:r.motivoDetalle, entrega: ent ? null : { nombre:r.entregadoPor, area:r.areaEntrega, firma: lastSaved && lastSaved.id===id ? lastSaved.entrega?.firma : '', firmaUrl:r.firmaEntrega },
     responsable:{ nombre:r.responsable, cargo:r.cargo, firma: lastSaved && lastSaved.id===id ? lastSaved.responsable.firma : '', firmaUrl:r.firmaResponsable },
+    capacitacion: ent ? { firma: lastSaved && lastSaved.id===id ? lastSaved.capacitacion?.firma : '', firmaUrl:r.firmaCapacitacion } : null,
     observaciones:r.observaciones, lineas: ms.map(m => ({ nombre:m.nombre, area:m.area, fecha:m.fecha, epp:m.epp, cantidad:m.cantidad, condicion: m.condicion.startsWith('Dañado') ? 'Baja' : 'Reingreso' })) });
 }
 $('#btnCsv').onclick = () => {
@@ -1146,15 +1168,16 @@ $('#btnCsv').onclick = () => {
 function printConstancia(r){
   const ent = r.tipo === 'Entrega';
   const sig = (s, label, name) => `<div class="sig">${s && s.firma ? `<img src="${s.firma}" alt="">` : (s && s.firmaUrl ? '<div style="height:60px;padding-top:30px;font-style:italic;color:#666">Firma en archivo digital</div>' : '<div style="height:80px"></div>')}<div class="ln">${esc(name || '')}<br><small>${label}</small></div></div>`;
-  $('#printArea').innerHTML = `<div class="ph-top"><div style="display:flex;gap:14px;align-items:center"><img src="${LOGO}" alt="Xochi" style="height:44px"><div><h1>Constancia de ${ent ? 'entrega' : 'recepción'} de EPP</h1><div>Xochi Autopista · Seguridad y Salud Ocupacional</div></div></div>
+  $('#printArea').innerHTML = `<div class="ph-top"><div style="display:flex;gap:14px;align-items:center"><img src="${LOGO}" alt="Xochi" style="height:44px"><div><h1>Constancia de ${ent ? 'entrega' : 'devolución'} de EPP</h1><div>Xochi Autopista · Seguridad y Salud Ocupacional</div></div></div>
     <div style="text-align:right"><b>${esc(r.id)}</b><br>Fecha: ${esc(fmtDate(r.fecha))}<br><small>Capturado: ${esc(r.creado || '')}</small></div></div>
-    <div class="kv"><b>Empleado</b><span>${esc(r.lineas[0]?.nombre)}${r.lineas[0]?.area ? ' · ' + esc(r.lineas[0].area) : ''}</span><b>${ent ? 'Fecha de entrega' : 'Fecha de recepción'}</b><span>${esc(fmtDate(r.lineas[0]?.fecha))}</span>${ent ? `<b>Tipo de equipo</b><span>${esc([r.tipoEquipo, r.tipoEquipoDetalle].filter(Boolean).join(': '))}</span><b>Motivo de entrega</b><span>${esc([r.motivo, r.motivoDetalle].filter(Boolean).join(': '))}</span>`
+    <div class="kv"><b>Empleado</b><span>${esc(r.lineas[0]?.nombre)}${r.lineas[0]?.area ? ' · ' + esc(r.lineas[0].area) : ''}</span><b>${ent ? 'Fecha de entrega' : 'Fecha de devolución'}</b><span>${esc(fmtDate(r.lineas[0]?.fecha))}</span>${ent ? `<b>Tipo de equipo</b><span>${esc([r.tipoEquipo, r.tipoEquipoDetalle].filter(Boolean).join(': '))}</span><b>Motivo de entrega</b><span>${esc([r.motivo, r.motivoDetalle].filter(Boolean).join(': '))}</span>`
       : ''}
       <b>Responsable</b><span>${esc(r.responsable.nombre)}${r.responsable.cargo ? ' · ' + esc(r.responsable.cargo) : ''}</span>
       ${r.observaciones ? `<b>Observaciones</b><span>${esc(r.observaciones)}</span>` : ''}</div>
     <table><thead><tr><th>#</th><th>EPP</th><th>Cantidad</th>${ent ? '' : '<th>Condición</th>'}</tr></thead>
       <tbody>${r.lineas.map((l,i) => `<tr><td>${i+1}</td><td>${esc(catById[l.epp]?.descripcion || l.epp)}</td><td>${l.cantidad}</td>${ent ? '' : `<td>${l.condicion === 'Baja' ? 'Dañado — baja' : 'Buen estado'}</td>`}</tr>`).join('')}</tbody></table>
-    <div class="sigs">${ent ? sig(null, 'Recibí conforme (empleado)', r.lineas[0]?.nombre) : sig(r.entrega, 'Persona que entrega el EPP', r.entrega?.nombre)}${sig(r.responsable, 'Responsable del registro', r.responsable.nombre)}</div>`;
+    ${ent ? `<p style="margin:4px 0 0"><b>Capacitación de EPP.</b> ${esc(CAP_TEXTO)}</p>` : ''}
+    <div class="sigs">${ent ? sig(r.capacitacion, 'Empleado: recibí EPP y capacitación de uso y manejo', r.lineas[0]?.nombre) : sig(r.entrega, 'Persona que entrega el EPP', r.entrega?.nombre)}${sig(r.responsable, 'Responsable del registro', r.responsable.nombre)}</div>`;
   setTimeout(() => window.print(), 50);
 }
 
