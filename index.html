@@ -179,6 +179,17 @@ label.lbl{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);marg
 .line-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .line-h .n{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .line-h .rm{margin-left:auto}
+.emp-box{border:1px solid var(--line);border-radius:12px;padding:12px 14px 4px;background:#f9fbfd}
+.eline{display:grid;grid-template-columns:30px minmax(0,1fr) 170px auto;gap:8px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:10px 10px 4px 12px;background:#fff}
+.eline.rec{grid-template-columns:30px minmax(0,1fr) 120px 285px auto}
+.eline .n{width:24px;height:24px;border-radius:50%;background:var(--blue-soft);color:var(--blue-ink);font-size:12px;font-weight:600;display:grid;place-items:center;margin-top:9px}
+.eline .rm{margin-top:4px}
+@media (max-width:700px){
+  .eline,.eline.rec{grid-template-columns:30px minmax(0,1fr) auto}
+  .eline .w-epp{grid-column:2/3}.eline .rm{grid-column:3;grid-row:1}
+  .eline.solo .w-epp{grid-column:2/4}.eline.solo .rm{display:none}
+  .eline .w-qty,.eline .w-cond{grid-column:2/4}
+}
 .line-g{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px}
 .c5{grid-column:span 5}.c4{grid-column:span 4}.c3{grid-column:span 3}.c2{grid-column:span 2}.c6{grid-column:span 6}.c7{grid-column:span 7}
 .fhint{font-size:11.5px;margin-top:3px;min-height:15px;color:var(--muted)}
@@ -405,26 +416,27 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:900px}
           <div class="opt-extra" id="motivoOtro"><input class="input" id="rMotivoOtro" placeholder="Escribir motivo"></div>
         </div>
 
-        <!-- Recepción -->
-        <div class="card sec only-rec">
-          <h3><span class="num">2</span>Persona que entrega el EPP</h3>
-          <div class="resp-g">
-            <div><label class="lbl" for="reNombre">Nombre de la persona quien entrega el EPP</label>
-              <input class="input" id="reNombre" list="dlNombres" placeholder="Nombres y apellidos"></div>
-            <div><label class="lbl" for="reArea">Área</label><input class="input" id="reArea" list="dlAreas" placeholder="Área"></div>
-            <div class="full"><label class="lbl">Firma <span class="hint">(espacio para firmar)</span></label>
-              <div class="sig-wrap" id="sigEntrega"></div></div>
-          </div>
-        </div>
-
-        <!-- Lista -->
+        <!-- Lista: una sola persona por registro -->
         <div class="card sec">
           <h3><span class="num" id="numLista">4</span><span id="tLista">Lista de entrega de EPP</span></h3>
-          <div class="lines" id="lines"></div>
-          <div class="add-row">
-            <button type="button" class="btn" id="btnAddLine">+ Agregar personal y equipo</button>
-            <button type="button" class="btn ghost" id="btnAddSame">+ Otro EPP para la misma persona</button>
+          <div class="emp-box">
+            <div class="line-g">
+              <div class="c6"><select class="input empty" id="rEmp" aria-label="Nombres y apellidos"><option value="">Nombres y apellidos</option></select><div class="fhint" id="hEmp"></div></div>
+              <div class="c3"><input class="input" id="rArea" list="dlAreas" placeholder="Área" aria-label="Área"></div>
+              <div class="c3"><input type="date" class="input" id="rFechaMov" aria-label="Fecha de entrega"><div class="fhint hint" id="lFechaMov">Fecha de entrega</div></div>
+            </div>
           </div>
+          <p class="sub-lbl" style="margin:16px 0 8px">EPP <span class="hint" id="hEppSub">(a entregar)</span></p>
+          <div class="lines" id="lines"></div>
+          <div class="add-row"><button type="button" class="btn" id="btnAddLine">+ Agregar EPP</button></div>
+        </div>
+
+        <!-- Recepción: firma de quien entrega -->
+        <div class="card sec only-rec">
+          <h3><span class="num">3</span>Persona que entrega el EPP</h3>
+          <p class="sub-lbl" id="firmaEntNombre" style="font-weight:500"></p>
+          <label class="lbl">Firma <span class="hint">(espacio para firmar)</span></label>
+          <div class="sig-wrap" id="sigEntrega"></div>
         </div>
 
         <!-- Responsable -->
@@ -890,13 +902,14 @@ const sigResp = new SigPad($('#sigResp')), sigEnt = new SigPad($('#sigEntrega'))
 const sigs = [sigResp, sigEnt];
 window.addEventListener('resize', () => sigs.forEach(s => s.resize()));
 
-/* ---------------- Registro ---------------- */
-let movTipo = null, lineSeq = 0;
-$('#rFecha').value = today();
+/* ---------------- Registro (una persona por registro) ---------------- */
+let movTipo = null;
+const empSel = () => $('#rEmp').value;
+$('#rFecha').value = today(); $('#rFechaMov').value = today();
 $$('.mov').forEach(b => b.addEventListener('click', () => setMov(b.dataset.mov)));
 function setMov(t){
-  if (movTipo && movTipo !== t && $$('#lines .line').some(l => l.querySelector('[data-f=emp]').value)){
-    if (!confirmLines()) return;
+  if (movTipo && movTipo !== t && readLines().some(l => l.epp)){
+    if (!window.confirm('Cambiar el tipo de movimiento borrará los EPP capturados. ¿Continuar?')) return;
   }
   const changed = movTipo !== t; movTipo = t;
   $$('.mov').forEach(b => b.classList.toggle('on', b.dataset.mov === t));
@@ -905,12 +918,14 @@ function setMov(t){
   $$('.only-ent').forEach(x => x.style.display = ent ? '' : 'none');
   $$('.only-rec').forEach(x => x.style.display = ent ? 'none' : '');
   $('#tLista').textContent = ent ? 'Lista de entrega de EPP' : 'Lista de recepción de EPP';
-  $('#numLista').textContent = ent ? '4' : '3'; $('#numResp').textContent = ent ? '5' : '4';
+  $('#lFechaMov').textContent = ent ? 'Fecha de entrega' : 'Fecha de recepción';
+  $('#rFechaMov').setAttribute('aria-label', $('#lFechaMov').textContent);
+  $('#hEppSub').textContent = ent ? '(a entregar)' : '(a recibir)';
+  $('#numLista').textContent = ent ? '4' : '2'; $('#numResp').textContent = ent ? '5' : '4';
   if (changed){ $('#lines').innerHTML = ''; addLine(); }
-  $('#regErr').classList.remove('show');
+  updateFirmaNombre(); $('#regErr').classList.remove('show');
   setTimeout(() => sigs.forEach(s => s.resize()), 30);
 }
-function confirmLines(){ return window.confirm('Cambiar el tipo de movimiento borrará las líneas capturadas. ¿Continuar?'); }
 
 // Opciones tipo/motivo (selección única)
 ['#optTipo','#optMotivo'].forEach(id => $(id).addEventListener('click', e => {
@@ -925,10 +940,10 @@ function personOptions(sel){
   return '<option value="">Nombres y apellidos</option>' + sortedPersonal().map(p =>
     `<option value="${esc(p.nombre)}" ${p.nombre===sel?'selected':''}>${esc(p.nombre)}${p.estado && p.estado!=='Activo' ? ' ('+esc(p.estado)+')' : ''}</option>`).join('');
 }
-function eppOptions(sel, empCode){
+function eppOptions(sel, emp){
   let list = sortedCatalogo();
-  if (movTipo === 'Recepción' && empCode){
-    const asg = asignaciones(empCode).map(a => a.epp);
+  if (movTipo === 'Recepción' && emp){
+    const asg = asignaciones(emp).map(a => a.epp);
     const a = list.filter(c => asg.includes(c.codigo)), b = list.filter(c => !asg.includes(c.codigo));
     return '<option value="">Nombre de EPP</option>' +
       (a.length ? `<optgroup label="Asignado a esta persona">${a.map(c => eo(c, sel)).join('')}</optgroup>` : '') +
@@ -938,90 +953,71 @@ function eppOptions(sel, empCode){
 }
 function eo(c, sel){ const tag = movTipo === 'Entrega' ? ` · disp. ${c.inventario}` : ''; return `<option value="${esc(c.codigo)}" ${c.codigo===sel?'selected':''}>${esc(c.descripcion)}${tag}</option>`; }
 
-function addLine(prefill = {}){
-  lineSeq++;
+function addLine(){
   const ent = movTipo === 'Entrega';
-  const el = document.createElement('div'); el.className = 'line';
-  el.innerHTML = `<div class="line-h"><span class="n"></span><button type="button" class="btn ghost sm rm danger" title="Quitar línea">Quitar</button></div>
-    <div class="line-g">
-      <div class="c5"><select class="input empty" data-f="emp" aria-label="Nombres y apellidos">${personOptions(prefill.emp)}</select><div class="fhint" data-h="emp"></div></div>
-      <div class="c4"><input class="input" data-f="area" placeholder="Área" list="dlAreas" aria-label="Área"></div>
-      <div class="c3"><input type="date" class="input" data-f="fecha" aria-label="${ent?'Fecha de entrega':'Fecha de recepción'}" title="${ent?'Fecha de entrega':'Fecha de recepción'}"><div class="fhint hint">${ent?'Fecha de entrega':'Fecha de recepción'}</div></div>
-      <div class="${ent?'c7':'c5'}"><select class="input empty" data-f="epp" aria-label="Nombre de EPP"></select><div class="fhint" data-h="epp"></div></div>
-      <div class="${ent?'c5':'c3'}"><input type="number" min="1" step="1" class="input" data-f="qty" placeholder="Cantidad de EPP" aria-label="Cantidad de EPP"><div class="fhint" data-h="qty"></div></div>
-      ${ent ? '' : `<div class="c4"><select class="input" data-f="cond" aria-label="Condición"><option value="Reingreso">Buen estado — vuelve a inventario</option><option value="Baja">Dañado — se da de baja</option></select><div class="fhint hint">Condición del EPP recibido</div></div>`}
-    </div>`;
+  const el = document.createElement('div'); el.className = 'line eline' + (ent ? '' : ' rec');
+  el.innerHTML = `<span class="n"></span>
+    <div class="w-epp"><select class="input empty" data-f="epp" aria-label="Nombre de EPP">${eppOptions('', empSel())}</select><div class="fhint" data-h="epp"></div></div>
+    <div class="w-qty"><input type="number" min="1" step="1" class="input" data-f="qty" placeholder="Cantidad de EPP" aria-label="Cantidad de EPP"><div class="fhint" data-h="qty"></div></div>
+    ${ent ? '' : `<div class="w-cond"><select class="input" data-f="cond" aria-label="Condición"><option value="Reingreso">Buen estado — vuelve a inventario</option><option value="Baja">Dañado — se da de baja</option></select><div class="fhint hint">Condición del EPP recibido</div></div>`}
+    <button type="button" class="btn ghost sm rm danger" title="Quitar EPP">Quitar</button>`;
   $('#lines').appendChild(el);
-  el.querySelector('[data-f=fecha]').value = prefill.fecha || $('#rFecha').value || today();
-  if (prefill.emp) fillPerson(el, prefill.emp, prefill);
-  el.querySelector('[data-f=epp]').innerHTML = eppOptions('', prefill.emp);
   renumber(); validateLines(); return el;
 }
-function fillPerson(el, code, pre = {}){
-  const p = perById[code]; const sel = el.querySelector('[data-f=emp]'); sel.value = code; sel.classList.toggle('empty', !code);
-  el.querySelector('[data-f=area]').value = pre.area ?? (p ? p.area : '');
+function renumber(){ const ls = $$('#lines .line'); ls.forEach((l,i) => { l.querySelector('.n').textContent = i+1; l.classList.toggle('solo', ls.length === 1); l.querySelector('.rm').style.visibility = ls.length > 1 ? '' : 'hidden'; }); }
+function setEmpleado(nombre){
+  const sel = $('#rEmp'); sel.value = nombre || ''; sel.classList.toggle('empty', !sel.value);
+  const p = perById[sel.value]; $('#rArea').value = p ? (p.area || '') : '';
+  $$('#lines [data-f=epp]').forEach(s => { s.innerHTML = eppOptions(s.value, sel.value); });
+  updateFirmaNombre(); validateLines();
 }
-function renumber(){ $$('#lines .line').forEach((l,i) => { l.querySelector('.n').textContent = 'Línea ' + (i+1); l.querySelector('.rm').style.visibility = $$('#lines .line').length > 1 ? '' : 'hidden'; }); }
+function updateFirmaNombre(){ $('#firmaEntNombre').textContent = empSel() ? empSel() + (($('#rArea').value) ? ' · ' + $('#rArea').value : '') : 'Selecciona a la persona en la lista de recepción.'; }
 function refreshLineOptions(){
-  $$('#lines .line').forEach(l => {
-    const emp = l.querySelector('[data-f=emp]'), epp = l.querySelector('[data-f=epp]'); const ev = emp.value, pv = epp.value;
-    emp.innerHTML = personOptions(ev); epp.innerHTML = eppOptions(pv, ev);
-  });
+  const ev = $('#rEmp').value; $('#rEmp').innerHTML = personOptions(ev); if ($('#rEmp').value !== ev) $('#rEmp').value = '';
+  $('#rEmp').classList.toggle('empty', !$('#rEmp').value);
+  $$('#lines [data-f=epp]').forEach(s => { const v = s.value; s.innerHTML = eppOptions(v, $('#rEmp').value); });
   validateLines();
 }
+$('#rEmp').addEventListener('change', e => { e.target.classList.remove('err'); setEmpleado(e.target.value); });
+$('#rArea').addEventListener('input', updateFirmaNombre);
 $('#lines').addEventListener('click', e => { const rm = e.target.closest('.rm'); if (rm){ rm.closest('.line').remove(); renumber(); validateLines(); } });
-$('#lines').addEventListener('change', e => {
-  const el = e.target.closest('.line'); const f = e.target.dataset.f; if (!el) return;
-  if (f === 'emp'){ fillPerson(el, e.target.value); if (movTipo === 'Recepción'){ const s = el.querySelector('[data-f=epp]'); s.innerHTML = eppOptions(s.value, e.target.value); } }
-  if (e.target.tagName === 'SELECT') e.target.classList.toggle('empty', !e.target.value);
-  validateLines();
-});
+$('#lines').addEventListener('change', e => { if (e.target.tagName === 'SELECT') e.target.classList.toggle('empty', !e.target.value); validateLines(); });
 $('#lines').addEventListener('input', e => { e.target.classList.remove('err'); validateLines(); });
-$('#btnAddLine').onclick = () => { const l = addLine(); l.querySelector('[data-f=emp]').focus(); };
-$('#btnAddSame').onclick = () => {
-  const ls = $$('#lines .line'); const last = ls[ls.length-1];
-  if (!last || !last.querySelector('[data-f=emp]').value){ toast('Primero selecciona a la persona en la última línea.', 'bad'); return; }
-  const g = f => last.querySelector(`[data-f=${f}]`).value;
-  const l = addLine({ emp:g('emp'), area:g('area'), fecha:g('fecha') }); l.querySelector('[data-f=epp]').focus();
-};
-$('#rFecha').addEventListener('change', () => $$('#lines [data-f=fecha]').forEach(i => { if (!i.dataset.touched) i.value = $('#rFecha').value; }));
-$('#lines').addEventListener('focusin', e => { if (e.target.dataset.f === 'fecha') e.target.dataset.touched = '1'; });
-// Persona que entrega (recepción): autocompleta área
-$('#reNombre').addEventListener('change', () => { const p = S.personal.find(x => x.nombre === $('#reNombre').value.trim()); if (p && p.area && !$('#reArea').value) $('#reArea').value = p.area; });
+$('#btnAddLine').onclick = () => { const l = addLine(); l.querySelector('[data-f=epp]').focus(); };
+$('#rFecha').addEventListener('change', () => { if (!$('#rFechaMov').dataset.touched) $('#rFechaMov').value = $('#rFecha').value; });
+$('#rFechaMov').addEventListener('change', e => { e.target.dataset.touched = '1'; e.target.classList.remove('err'); });
 
 function readLines(){
+  const emp = empSel(), p = perById[emp];
   return $$('#lines .line').map(el => { const g = f => { const x = el.querySelector(`[data-f=${f}]`); return x ? x.value.trim() : ''; };
-    return { el, empleado:g('emp'), codigo: perById[g('emp')] ? (perById[g('emp')].codigo || '') : '', nombre:g('emp'), area:g('area'), fecha:g('fecha'),
+    return { el, empleado:emp, codigo: p ? (p.codigo || '') : '', nombre:emp, area:$('#rArea').value.trim(), fecha:$('#rFechaMov').value,
       epp:g('epp'), cantidad: Math.floor(num(g('qty'))), qtyRaw:g('qty'), condicion: g('cond') || '' }; });
 }
-/** Validación en vivo: existencias por EPP (sumando líneas) y EPP asignado por persona */
+/** Validación en vivo: existencias por EPP (sumando líneas) y EPP asignado a la persona */
 function validateLines(){
   if (!movTipo) return { errors:[] };
-  const ls = readLines(); const ent = movTipo === 'Entrega'; const errors = [];
-  const totEpp = {}, totPerEpp = {};
-  ls.forEach(l => { if (l.epp && l.cantidad > 0){ totEpp[l.epp] = (totEpp[l.epp]||0) + l.cantidad; const k = l.empleado+'|'+l.epp; totPerEpp[k] = (totPerEpp[k]||0) + l.cantidad; } });
+  const ls = readLines(); const ent = movTipo === 'Entrega'; const errors = []; const emp = empSel();
+  const p = perById[emp]; const he = $('#hEmp');
+  he.className = 'fhint' + (p && p.estado && p.estado !== 'Activo' ? ' warn' : ''); he.textContent = p && p.estado && p.estado !== 'Activo' ? 'Empleado con estado: ' + p.estado : '';
+  const tot = {};
+  ls.forEach(l => { if (l.epp && l.cantidad > 0) tot[l.epp] = (tot[l.epp]||0) + l.cantidad; });
   ls.forEach((l, i) => {
-    const h = k => l.el.querySelector(`[data-h=${k}]`); const c = catById[l.epp];
-    h('epp').className = 'fhint'; h('epp').textContent = ''; h('qty').className = 'fhint'; h('qty').textContent = ''; h('emp').className = 'fhint'; h('emp').textContent = '';
-    const p = perById[l.empleado];
-    if (p && p.estado && p.estado !== 'Activo'){ h('emp').className = 'fhint warn'; h('emp').textContent = 'Empleado con estado: ' + p.estado; }
-    if (c){
-      if (ent){
-        const over = totEpp[l.epp] > c.inventario;
-        h('epp').className = 'fhint' + (over ? ' bad' : ''); h('epp').textContent = over ? `Inventario insuficiente: disponible ${c.inventario}, solicitado ${totEpp[l.epp]}` : `Disponible en inventario: ${c.inventario}`;
-        if (over) errors.push(`Línea ${i+1}: inventario insuficiente de "${c.descripcion}".`);
-      } else {
-        const asg = l.empleado ? (asignaciones(l.empleado).find(a => a.epp === l.epp)?.qty || 0) : 0;
-        const overUso = totEpp[l.epp] > c.enUso; const overAsg = l.empleado && totPerEpp[l.empleado+'|'+l.epp] > asg;
-        if (overUso){ h('epp').className = 'fhint bad'; h('epp').textContent = `Solo hay ${c.enUso} en uso según el catálogo`; errors.push(`Línea ${i+1}: "${c.descripcion}" solo tiene ${c.enUso} en uso.`); }
-        else if (overAsg){ h('epp').className = 'fhint warn'; h('epp').textContent = `Asignado por registros: ${asg}. Se aceptará si fue entregado antes de usar la herramienta.`; }
-        else if (l.empleado){ h('epp').textContent = `Asignado a esta persona: ${asg}`; }
-      }
+    const h = l.el.querySelector('[data-h=epp]'); const c = catById[l.epp];
+    h.className = 'fhint'; h.textContent = ''; l.el.querySelector('[data-h=qty]').textContent = '';
+    if (!c) return;
+    if (ent){
+      const over = tot[l.epp] > c.inventario;
+      h.className = 'fhint' + (over ? ' bad' : ''); h.textContent = over ? `Inventario insuficiente: disponible ${c.inventario}, solicitado ${tot[l.epp]}` : `Disponible en inventario: ${c.inventario}`;
+      if (over) errors.push(`EPP ${i+1}: inventario insuficiente de "${c.descripcion}".`);
+    } else {
+      const asg = emp ? (asignaciones(emp).find(a => a.epp === l.epp)?.qty || 0) : 0;
+      if (tot[l.epp] > c.enUso){ h.className = 'fhint bad'; h.textContent = `Solo hay ${c.enUso} en uso según el catálogo`; errors.push(`EPP ${i+1}: "${c.descripcion}" solo tiene ${c.enUso} en uso.`); }
+      else if (emp && tot[l.epp] > asg){ h.className = 'fhint warn'; h.textContent = `Asignado por registros: ${asg}. Se aceptará si fue entregado antes de usar la herramienta.`; }
+      else if (emp){ h.textContent = `Asignado a esta persona: ${asg}`; }
     }
   });
-  const n = ls.filter(l => l.empleado && l.epp && l.cantidad > 0);
-  const personas = new Set(n.map(l => l.empleado)).size, uds = n.reduce((s,l)=>s+l.cantidad,0);
-  $('#regSummary').textContent = n.length ? `${n.length} línea${n.length===1?'':'s'} · ${personas} persona${personas===1?'':'s'} · ${uds} unidad${uds===1?'':'es'}` : '';
+  const n = ls.filter(l => l.epp && l.cantidad > 0); const uds = n.reduce((s,l)=>s+l.cantidad,0);
+  $('#regSummary').textContent = n.length ? `${emp || 'Sin persona'} · ${n.length} EPP · ${uds} unidad${uds===1?'':'es'}` : '';
   return { errors };
 }
 
@@ -1037,17 +1033,15 @@ $('#btnSaveReg').onclick = async () => {
     if (tipoEquipo === 'Otro'){ tipoDet = $('#rTipoOtro').value.trim(); if (!tipoDet){ errs.push('Escribe el tipo de equipo.'); $('#rTipoOtro').classList.add('err'); } }
     if (!motivo) errs.push('Selecciona el motivo de entrega.');
     if (motivo === 'Otro'){ motivoDet = $('#rMotivoOtro').value.trim(); if (!motivoDet){ errs.push('Escribe el motivo de entrega.'); $('#rMotivoOtro').classList.add('err'); } }
-  } else {
-    if (!$('#reNombre').value.trim()){ errs.push('Indica el nombre de la persona que entrega el EPP.'); $('#reNombre').classList.add('err'); }
-    if (sigEnt.empty) errs.push('Falta la firma de la persona que entrega el EPP.');
   }
+  if (!empSel()){ errs.push('Selecciona a la persona (Nombres y apellidos).'); $('#rEmp').classList.add('err'); }
+  if (!$('#rFechaMov').value){ errs.push(`Indica la ${ent ? 'fecha de entrega' : 'fecha de recepción'}.`); $('#rFechaMov').classList.add('err'); }
+  if (!ent && sigEnt.empty) errs.push('Falta la firma de la persona que entrega el EPP.');
   const ls = readLines();
   ls.forEach((l,i) => {
     const mark = f => l.el.querySelector(`[data-f=${f}]`).classList.add('err');
-    if (!l.empleado){ errs.push(`Línea ${i+1}: selecciona la persona.`); mark('emp'); }
-    if (!l.epp){ errs.push(`Línea ${i+1}: selecciona el EPP.`); mark('epp'); }
-    if (!(l.cantidad > 0) || String(l.cantidad) !== String(num(l.qtyRaw))){ errs.push(`Línea ${i+1}: la cantidad debe ser un número entero mayor que 0.`); mark('qty'); }
-    if (!l.fecha){ errs.push(`Línea ${i+1}: indica la fecha.`); mark('fecha'); }
+    if (!l.epp){ errs.push(`EPP ${i+1}: selecciona el EPP.`); mark('epp'); }
+    if (!(l.cantidad > 0) || String(l.cantidad) !== String(num(l.qtyRaw))){ errs.push(`EPP ${i+1}: la cantidad debe ser un número entero mayor que 0.`); mark('qty'); }
   });
   errs.push(...validateLines().errors);
   if (!$('#rsNombre').value.trim()){ errs.push('Indica el nombre del responsable del registro.'); $('#rsNombre').classList.add('err'); }
@@ -1056,7 +1050,7 @@ $('#btnSaveReg').onclick = async () => {
   $('#regErr').classList.remove('show');
 
   const payload = { tipo:movTipo, fecha, tipoEquipo, tipoEquipoDetalle:tipoDet, motivo, motivoDetalle:motivoDet,
-    entrega: ent ? null : { nombre:$('#reNombre').value.trim(), area:$('#reArea').value.trim(), firma:sigEnt.data() },
+    entrega: ent ? null : { nombre:empSel(), area:$('#rArea').value.trim(), firma:sigEnt.data() },
     responsable: { nombre:$('#rsNombre').value.trim(), cargo:$('#rsCargo').value.trim(), firma:sigResp.data() },
     observaciones: $('#rsObs').value.trim(),
     lineas: ls.map(l => ({ empleado:l.codigo, nombre:l.nombre, area:l.area, fecha:l.fecha, epp:l.epp, cantidad:l.cantidad, condicion: ent ? '' : l.condicion })) };
@@ -1067,8 +1061,8 @@ $('#btnSaveReg').onclick = async () => {
     const rec = { ...payload, id: result.id, creado: result.creado };
     lastSaved = rec;
     modal(`<div class="modal-h"><h3>Registro guardado</h3></div>
-      <div class="modal-b"><p style="margin:0 0 6px">Se guardó el registro <b class="mono">${esc(result.id)}</b>.</p>
-      <p style="margin:0;color:var(--muted);font-size:14px">${payload.lineas.length} línea(s) · ${movTipo === 'Entrega' ? 'inventario descontado y sumado a «en uso»' : 'sumado a inventario y descontado de «en uso»'}.</p></div>
+      <div class="modal-b"><p style="margin:0 0 6px">Se guardó el registro <b class="mono">${esc(result.id)}</b> de <b>${esc(payload.lineas[0].nombre)}</b>.</p>
+      <p style="margin:0;color:var(--muted);font-size:14px">${payload.lineas.length} EPP · ${movTipo === 'Entrega' ? 'inventario descontado y sumado a «en uso»' : 'sumado a inventario y descontado de «en uso»'}.</p></div>
       <div class="modal-f"><button class="btn" id="mPrint">Imprimir constancia</button><button class="btn primary" id="mNew">Nuevo registro</button></div>`);
     $('#mPrint').onclick = () => printConstancia(rec);
     $('#mNew').onclick = () => { resetRegistro(); closeModal(); };
@@ -1079,16 +1073,14 @@ let lastSaved = null;
 function resetRegistro(){
   movTipo = null; $$('.mov').forEach(b => b.classList.remove('on')); $('#regBody').style.display = 'none';
   $$('#optTipo .opt, #optMotivo .opt').forEach(o => o.classList.remove('on')); $$('.opt-extra').forEach(x => { x.classList.remove('show'); x.querySelector('input').value = ''; });
-  ['#reNombre','#reArea','#rsObs'].forEach(s => $(s).value = '');
-  $('#rFecha').value = today(); $('#lines').innerHTML = ''; sigs.forEach(s => s.clear()); $('#regErr').classList.remove('show'); $('#regSummary').textContent = '';
+  ['#rArea','#rsObs'].forEach(s => $(s).value = ''); setEmpleado('');
+  $('#rFecha').value = today(); $('#rFechaMov').value = today(); delete $('#rFechaMov').dataset.touched;
+  $('#lines').innerHTML = ''; sigs.forEach(s => s.clear()); $('#regErr').classList.remove('show'); $('#regSummary').textContent = '';
 }
 $('#btnResetReg').onclick = () => { if (window.confirm('¿Limpiar todo el formulario?')) resetRegistro(); };
 function startRegistroFor(p, tipo){
   showPage('registro'); if (movTipo !== tipo){ movTipo = null; setMov(tipo); }
-  const ls = $$('#lines .line'); const last = ls[ls.length-1];
-  const target = (last && !last.querySelector('[data-f=emp]').value) ? last : addLine();
-  fillPerson(target, p.nombre); const s = target.querySelector('[data-f=epp]'); s.innerHTML = eppOptions('', p.nombre);
-  validateLines(); target.scrollIntoView({behavior:'smooth', block:'center'});
+  setEmpleado(p.nombre); $('#rEmp').scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 /* ---------------- Historial ---------------- */
@@ -1156,13 +1148,13 @@ function printConstancia(r){
   const sig = (s, label, name) => `<div class="sig">${s && s.firma ? `<img src="${s.firma}" alt="">` : (s && s.firmaUrl ? '<div style="height:60px;padding-top:30px;font-style:italic;color:#666">Firma en archivo digital</div>' : '<div style="height:80px"></div>')}<div class="ln">${esc(name || '')}<br><small>${label}</small></div></div>`;
   $('#printArea').innerHTML = `<div class="ph-top"><div style="display:flex;gap:14px;align-items:center"><img src="${LOGO}" alt="Xochi" style="height:44px"><div><h1>Constancia de ${ent ? 'entrega' : 'recepción'} de EPP</h1><div>Xochi Autopista · Seguridad y Salud Ocupacional</div></div></div>
     <div style="text-align:right"><b>${esc(r.id)}</b><br>Fecha: ${esc(fmtDate(r.fecha))}<br><small>Capturado: ${esc(r.creado || '')}</small></div></div>
-    <div class="kv">${ent ? `<b>Tipo de equipo</b><span>${esc([r.tipoEquipo, r.tipoEquipoDetalle].filter(Boolean).join(': '))}</span><b>Motivo de entrega</b><span>${esc([r.motivo, r.motivoDetalle].filter(Boolean).join(': '))}</span>`
-      : `<b>Entregado por</b><span>${esc(r.entrega?.nombre)}${r.entrega?.area ? ' · ' + esc(r.entrega.area) : ''}</span>`}
+    <div class="kv"><b>Empleado</b><span>${esc(r.lineas[0]?.nombre)}${r.lineas[0]?.area ? ' · ' + esc(r.lineas[0].area) : ''}</span><b>${ent ? 'Fecha de entrega' : 'Fecha de recepción'}</b><span>${esc(fmtDate(r.lineas[0]?.fecha))}</span>${ent ? `<b>Tipo de equipo</b><span>${esc([r.tipoEquipo, r.tipoEquipoDetalle].filter(Boolean).join(': '))}</span><b>Motivo de entrega</b><span>${esc([r.motivo, r.motivoDetalle].filter(Boolean).join(': '))}</span>`
+      : ''}
       <b>Responsable</b><span>${esc(r.responsable.nombre)}${r.responsable.cargo ? ' · ' + esc(r.responsable.cargo) : ''}</span>
       ${r.observaciones ? `<b>Observaciones</b><span>${esc(r.observaciones)}</span>` : ''}</div>
-    <table><thead><tr><th>#</th><th>Nombres y apellidos</th><th>Área</th><th>Fecha</th><th>EPP</th><th>Cant.</th>${ent ? '' : '<th>Condición</th>'}<th>Firma de recibido</th></tr></thead>
-      <tbody>${r.lineas.map((l,i) => `<tr><td>${i+1}</td><td>${esc(l.nombre)}</td><td>${esc(l.area)}</td><td>${esc(fmtDate(l.fecha))}</td><td>${esc(catById[l.epp]?.descripcion || l.epp)}</td><td>${l.cantidad}</td>${ent ? '' : `<td>${l.condicion === 'Baja' ? 'Dañado — baja' : 'Buen estado'}</td>`}<td style="width:120px"></td></tr>`).join('')}</tbody></table>
-    <div class="sigs">${ent ? '' : sig(r.entrega, 'Persona que entrega el EPP', r.entrega?.nombre)}${sig(r.responsable, 'Responsable del registro', r.responsable.nombre)}</div>`;
+    <table><thead><tr><th>#</th><th>EPP</th><th>Cantidad</th>${ent ? '' : '<th>Condición</th>'}</tr></thead>
+      <tbody>${r.lineas.map((l,i) => `<tr><td>${i+1}</td><td>${esc(catById[l.epp]?.descripcion || l.epp)}</td><td>${l.cantidad}</td>${ent ? '' : `<td>${l.condicion === 'Baja' ? 'Dañado — baja' : 'Buen estado'}</td>`}</tr>`).join('')}</tbody></table>
+    <div class="sigs">${ent ? sig(null, 'Recibí conforme (empleado)', r.lineas[0]?.nombre) : sig(r.entrega, 'Persona que entrega el EPP', r.entrega?.nombre)}${sig(r.responsable, 'Responsable del registro', r.responsable.nombre)}</div>`;
   setTimeout(() => window.print(), 50);
 }
 
