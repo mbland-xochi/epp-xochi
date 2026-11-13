@@ -182,6 +182,14 @@ label.lbl{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);marg
 .decl{background:var(--blue-soft);border:1px solid #c5e4f3;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:var(--ink-2)}
 .decl p{margin:0}
 .decl .decl-who{margin-top:8px;font-weight:600;color:var(--navy)}
+.cap-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #bfe5cc;background:var(--green-soft);border-radius:10px;margin-bottom:6px}
+.cap-item .ck{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.cap-item .d{flex:1;min-width:0;font-weight:600;font-size:14px;color:var(--green-ink)}
+.cap-item .d small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.cap-item.none{background:var(--warn-soft);border-color:#f0d6a8}
+.cap-item.none .ck{background:var(--warn)}.cap-item.none .d{color:var(--warn)}
+.firma-box{border:1px solid var(--line);border-radius:12px;background:#fff;min-height:170px;display:grid;place-items:center;padding:10px}
+.firma-box img{max-width:100%;max-height:220px}
 .emp-box{border:1px solid var(--line);border-radius:12px;padding:12px 14px 4px;background:#f9fbfd}
 .eline{display:grid;grid-template-columns:30px minmax(0,1fr) 170px auto;gap:8px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:10px 10px 4px 12px;background:#fff}
 .eline.rec{grid-template-columns:30px minmax(0,1fr) 120px 285px auto}
@@ -547,7 +555,7 @@ const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch(e
 const lsSet = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } };
 
 /* ---------------- Backend local (modo demostración) ---------------- */
-const LOCAL_KEY = 'xochi_epp_demo_v4';
+const LOCAL_KEY = 'xochi_epp_demo_v5';
 const Local = {
   db: null,
   load(){
@@ -579,10 +587,10 @@ const Local = {
       tipoEquipo: esEnt ? p.tipoEquipo : '', tipoEquipoDetalle: esEnt ? p.tipoEquipoDetalle : '',
       motivo: esEnt ? p.motivo : '', motivoDetalle: esEnt ? p.motivoDetalle : '',
       entregadoPor: esEnt ? '' : p.entrega.nombre, areaEntrega: esEnt ? '' : p.entrega.area,
-      firmaEntrega: esEnt ? '' : (p.entrega.firma ? '(firma capturada)' : ''),
+      firmaEntrega: esEnt ? '' : (p.entrega.firma || ''),
       responsable: p.responsable.nombre, cargo: p.responsable.cargo, observaciones: p.observaciones,
-      firmaResponsable: p.responsable.firma ? '(firma capturada)' : '', lineas: p.lineas.length,
-      firmaCapacitacion: esEnt && p.capacitacion && p.capacitacion.firma ? '(firma capturada)' : '' });
+      firmaResponsable: p.responsable.firma || '', lineas: p.lineas.length, capacitacion: esEnt && p.capacitacion ? p.capacitacion.texto : '',
+      firmaCapacitacion: esEnt && p.capacitacion ? (p.capacitacion.firma || '') : '' });
     const mot = esEnt ? [p.motivo, p.motivoDetalle].filter(Boolean).join(': ') : '';
     p.lineas.forEach((l,i) => d.movimientos.push({ id: id+'-'+(i+1), registro:id, creado, tipo:p.tipo, fecha:l.fecha||p.fecha,
       empleado:l.empleado, nombre:l.nombre, area:l.area, epp:l.epp, eppNombre:cat[l.epp].descripcion,
@@ -624,6 +632,20 @@ async function apiGetAll(){
   const r = await fetch(API_URL + '?action=getAll', { redirect:'follow' });
   const j = await r.json(); if (!j.ok) throw new Error(j.error); return j.data;
 }
+const firmaCache = {};
+const FIRMA_CAMPO = { capacitacion:'firmaCapacitacion', responsable:'firmaResponsable', entrega:'firmaEntrega' };
+/** Devuelve la firma como imagen (data URL). Las firmas en Drive se piden al Apps Script solo al abrirlas. */
+async function getFirma(regId, kind){
+  const r = S.registros.find(x => x.id === regId); const v = r ? String(r[FIRMA_CAMPO[kind]] || '') : '';
+  if (!v) return '';
+  if (v.startsWith('data:')) return v;
+  if (lastSaved && lastSaved.id === regId){ const m = { capacitacion:lastSaved.capacitacion?.firma, responsable:lastSaved.responsable?.firma, entrega:lastSaved.entrega?.firma }[kind]; if (m) return m; }
+  const k = regId + '|' + kind; if (firmaCache[k]) return firmaCache[k];
+  if (DEMO) return '';
+  const res = await fetch(`${API_URL}?action=firma&reg=${encodeURIComponent(regId)}&tipo=${kind}`, { redirect:'follow' });
+  const j = await res.json(); if (!j.ok) throw new Error(j.error);
+  return firmaCache[k] = j.data;
+}
 async function apiPost(action, payload){
   if (DEMO){ const result = Local[action](payload); return { result, data: Local.getAll() }; }
   const r = await fetch(API_URL, { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({action, payload}) });
@@ -656,6 +678,12 @@ function asignaciones(nombreEmp){
     if (x.tipo === 'Entrega' && (x.fecha||'') > m[k].ultima) m[k].ultima = x.fecha;
   });
   return Object.values(m).filter(a => a.qty > 0).sort((a,b) => a.nombre.localeCompare(b.nombre,'es'));
+}
+/** Entregas de esta persona con constancia de capacitación firmada (más reciente primero) */
+function capacitaciones(nombreEmp){
+  const ids = [...new Set(S.movimientos.filter(m => m.nombre === nombreEmp && m.tipo === 'Entrega').map(m => m.registro))];
+  return S.registros.filter(r => ids.includes(r.id) && r.firmaCapacitacion)
+    .sort((a,b) => String(b.fecha + b.creado).localeCompare(String(a.fecha + a.creado)));
 }
 function asignadoTotal(nombreEmp){ return asignaciones(nombreEmp).reduce((s,a) => s + a.qty, 0); }
 
@@ -702,6 +730,7 @@ function renderPersonal(){
         <span class="person-main"><span class="nm">${esc(p.nombre)}</span>
           <span class="meta">${p.codigo?`<span class="mono">${esc(p.codigo)}</span>`:''}${p.area?`<span>${esc(p.area)}</span>`:''}</span></span>
         ${p.estado && p.estado !== 'Activo' ? `<span class="chip red">${esc(p.estado)}</span>` : ''}
+        ${capacitaciones(p.nombre).length ? '<span class="chip green hide-m" title="Firmó constancia de capacitación de EPP">✓ Capacitado</span>' : ''}
         <span class="chip ${tot?'gold':''}">${tot ? tot + ' EPP' : 'Sin EPP'}</span>
         <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
@@ -729,8 +758,17 @@ function personBody(p, asg){
         <div class="full"><label class="lbl">Área</label><input class="input" data-f="area" value="${esc(p.area)}" list="dlAreas" placeholder="Área"></div>
         <div class="full"><label class="lbl">Puesto</label><input class="input" data-f="puesto" value="${esc(p.puesto)}" placeholder="Puesto"></div>
       </div>
-      <div style="margin-top:10px;text-align:right"><button class="btn sm primary" data-savep>Guardar datos</button></div></div>
+      <div style="margin-top:10px;text-align:right"><button class="btn sm primary" data-savep>Guardar datos</button></div>
+      <h4 style="margin-top:20px">Capacitación de EPP</h4>
+      ${capBlock(p)}</div>
   </div>`;
+}
+function capBlock(p){
+  const caps = capacitaciones(p.nombre);
+  if (!caps.length) return '<div class="cap-item none"><span class="ck">!</span><span class="d">Sin constancia de capacitación firmada<small>Se registra al hacer una entrega de EPP.</small></span></div>';
+  return caps.map(r => { const n = S.movimientos.filter(m => m.registro === r.id).length;
+    return `<div class="cap-item"><span class="ck">✓</span><span class="d">Firmó constancia de capacitación<small>${esc(fmtDate(r.fecha))} · ${n} EPP entregado${n===1?'':'s'}</small></span>
+      <button class="btn sm" data-firma="${esc(r.id)}|capacitacion">Ver firma</button></div>`; }).join('');
 }
 $('#peopleList').addEventListener('click', async e => {
   const card = e.target.closest('.person'); if (!card) return; const c = card.dataset.c; const p = perById[c];
@@ -1131,30 +1169,53 @@ function renderHistorial(){
     <td>${esc(m.responsable)}</td><td><button class="link mono" data-reg="${esc(m.registro)}">${esc(m.registro)}</button></td></tr>`).join('')
     : '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Sin movimientos para los filtros seleccionados.</td></tr>';
 }
-document.addEventListener('click', e => { const r = e.target.closest('[data-reg]'); if (r) showRegistro(r.dataset.reg); });
+document.addEventListener('click', e => {
+  const f = e.target.closest('[data-firma]'); if (f){ const [id, kind] = f.dataset.firma.split('|'); viewFirma(id, kind); return; }
+  const r = e.target.closest('[data-reg]'); if (r) showRegistro(r.dataset.reg); });
+async function viewFirma(id, kind){
+  const r = S.registros.find(x => x.id === id); if (!r) return;
+  const ms = S.movimientos.filter(m => m.registro === id); const emp = ms[0] || {};
+  const titulo = { capacitacion:'Constancia de capacitación de EPP', responsable:'Firma del responsable del registro', entrega:'Firma de quien devuelve el EPP' }[kind];
+  const quien = kind === 'responsable' ? r.responsable + (r.cargo ? ' · ' + r.cargo : '') : emp.nombre + (emp.area ? ' · ' + emp.area : '');
+  modal(`<div class="modal-h"><h3>${titulo}</h3><button class="btn ghost sm x" data-close>✕</button></div>
+    <div class="modal-b">
+      <dl class="det-g"><dt>${kind === 'responsable' ? 'Responsable' : 'Empleado'}</dt><dd><b>${esc(quien)}</b></dd>
+        <dt>Fecha</dt><dd>${esc(fmtDate(r.fecha))}</dd>
+        <dt>EPP</dt><dd>${ms.map(m => `${esc(m.eppNombre)} (${m.cantidad})`).join(', ')}</dd></dl>
+      ${kind === 'capacitacion' ? `<div class="decl"><p>${esc(r.capacitacion && r.capacitacion.length > 3 ? r.capacitacion : CAP_TEXTO)}</p></div>` : ''}
+      <div class="firma-box" id="firmaBox"><div class="spin"></div></div>
+    </div>
+    <div class="modal-f"><button class="btn" data-reg="${esc(id)}">Ver registro completo</button><button class="btn primary" data-close>Cerrar</button></div>`);
+  try { const img = await getFirma(id, kind); const box = $('#firmaBox'); if (!box) return;
+    box.innerHTML = img ? `<img src="${img}" alt="Firma">` : '<span class="hint">La firma no está disponible.</span>'; }
+  catch(err){ const box = $('#firmaBox'); if (box) box.innerHTML = `<span class="hint">No se pudo cargar la firma: ${esc(err.message)}</span>`; }
+}
 function showRegistro(id){
   const r = S.registros.find(x => x.id === id); const ms = S.movimientos.filter(m => m.registro === id); if (!r) return;
   const ent = r.tipo === 'Entrega';
-  const firma = v => !v ? '—' : (String(v).startsWith('http') ? `<a class="link" href="${esc(v)}" target="_blank" rel="noopener">Ver firma</a>` : esc(v));
+  const firma = (v, kind) => !v ? '—' : `<button class="link" data-firma="${esc(id)}|${kind}">Ver firma</button>`;
   modal(`<div class="modal-h"><h3>Registro <span class="mono">${esc(id)}</span></h3><button class="btn ghost sm x" data-close>✕</button></div>
     <div class="modal-b"><dl class="det-g">
       <dt>Movimiento</dt><dd><span class="chip ${ent?'blue':'green'}">${esc(r.tipo)}</span></dd>
       <dt>Fecha</dt><dd>${esc(fmtDate(r.fecha))} <span class="hint">(capturado ${esc(r.creado)})</span></dd>
       ${ent ? `<dt>Tipo de equipo</dt><dd>${esc([r.tipoEquipo, r.tipoEquipoDetalle].filter(Boolean).join(': '))}</dd><dt>Motivo</dt><dd>${esc([r.motivo, r.motivoDetalle].filter(Boolean).join(': '))}</dd>`
-            : `<dt>Entregado por</dt><dd>${esc(r.entregadoPor)}${r.areaEntrega?' · '+esc(r.areaEntrega):''}</dd><dt>Firma de quien entrega</dt><dd>${firma(r.firmaEntrega)}</dd>`}
+            : `<dt>Entregado por</dt><dd>${esc(r.entregadoPor)}${r.areaEntrega?' · '+esc(r.areaEntrega):''}</dd><dt>Firma de quien entrega</dt><dd>${firma(r.firmaEntrega,'entrega')}</dd>`}
       <dt>Responsable</dt><dd>${esc(r.responsable)}${r.cargo?' · '+esc(r.cargo):''}</dd>
-      ${ent ? `<dt>Capacitación de EPP</dt><dd>Firma del empleado: ${firma(r.firmaCapacitacion)}</dd>` : ''}
-      <dt>Firma responsable</dt><dd>${firma(r.firmaResponsable)}</dd>
+      ${ent ? `<dt>Capacitación de EPP</dt><dd>Firma del empleado: ${firma(r.firmaCapacitacion,'capacitacion')}</dd>` : ''}
+      <dt>Firma responsable</dt><dd>${firma(r.firmaResponsable,'responsable')}</dd>
       ${r.observaciones ? `<dt>Observaciones</dt><dd>${esc(r.observaciones)}</dd>` : ''}
     </dl>
     <div class="tbl-wrap"><table class="tbl" style="min-width:560px"><thead><tr><th>Empleado</th><th>Área</th><th>Fecha</th><th>EPP</th><th style="text-align:right">Cant.</th>${ent?'':'<th>Condición</th>'}</tr></thead>
       <tbody>${ms.map(m => `<tr><td>${esc(m.nombre)}</td><td>${esc(m.area)}</td><td>${esc(fmtDate(m.fecha))}</td><td>${esc(m.eppNombre)}</td><td class="q">${m.cantidad}</td>${ent?'':`<td>${esc(m.condicion)}</td>`}</tr>`).join('')}</tbody></table></div></div>
     <div class="modal-f"><button class="btn" id="dPrint">Imprimir constancia</button><button class="btn primary" data-close>Cerrar</button></div>`, true);
-  $('#dPrint').onclick = () => printConstancia({ id:r.id, creado:r.creado, tipo:r.tipo, fecha:r.fecha, tipoEquipo:r.tipoEquipo, tipoEquipoDetalle:r.tipoEquipoDetalle,
-    motivo:r.motivo, motivoDetalle:r.motivoDetalle, entrega: ent ? null : { nombre:r.entregadoPor, area:r.areaEntrega, firma: lastSaved && lastSaved.id===id ? lastSaved.entrega?.firma : '', firmaUrl:r.firmaEntrega },
-    responsable:{ nombre:r.responsable, cargo:r.cargo, firma: lastSaved && lastSaved.id===id ? lastSaved.responsable.firma : '', firmaUrl:r.firmaResponsable },
-    capacitacion: ent ? { firma: lastSaved && lastSaved.id===id ? lastSaved.capacitacion?.firma : '', firmaUrl:r.firmaCapacitacion } : null,
-    observaciones:r.observaciones, lineas: ms.map(m => ({ nombre:m.nombre, area:m.area, fecha:m.fecha, epp:m.epp, cantidad:m.cantidad, condicion: m.condicion.startsWith('Dañado') ? 'Baja' : 'Reingreso' })) });
+  $('#dPrint').onclick = async () => {
+    loading(true); const fz = {}; for (const k of ['capacitacion','responsable','entrega']){ try { fz[k] = await getFirma(id, k); } catch(e){ fz[k] = ''; } } loading(false);
+    printConstancia({ id:r.id, creado:r.creado, tipo:r.tipo, fecha:r.fecha, tipoEquipo:r.tipoEquipo, tipoEquipoDetalle:r.tipoEquipoDetalle,
+    motivo:r.motivo, motivoDetalle:r.motivoDetalle, entrega: ent ? null : { nombre:r.entregadoPor, area:r.areaEntrega, firma: fz.entrega, firmaUrl:r.firmaEntrega },
+    responsable:{ nombre:r.responsable, cargo:r.cargo, firma: fz.responsable, firmaUrl:r.firmaResponsable },
+    capacitacion: ent ? { firma: fz.capacitacion, firmaUrl:r.firmaCapacitacion } : null,
+    observaciones:r.observaciones, lineas: ms.map(m => ({ nombre:m.nombre, area:m.area, fecha:m.fecha, epp:m.epp, cantidad:m.cantidad, condicion: (m.condicion||'').startsWith('Dañado') ? 'Baja' : 'Reingreso' })) });
+  };
 }
 $('#btnCsv').onclick = () => {
   const rows = filtered(); if (!rows.length){ toast('No hay movimientos para exportar.', 'bad'); return; }
